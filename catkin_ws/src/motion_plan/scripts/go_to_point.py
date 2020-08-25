@@ -17,10 +17,9 @@ active_ = False
 
 # robot state variables
 position_ = Point()
-yaw_ = 100
-
+yaw_ = 0
 # machine state
-state_ = 1
+state_ = 0
 # goal
 desired_position_ = Point()
 desired_position_.x = 10
@@ -28,22 +27,12 @@ desired_position_.y = 10
 desired_position_.z = 0
 current_goal = 1
 # parameters
-yaw_precision_ = math.pi*2 / 180 # +/- 10 degree allowed
+yaw_precision_ = math.pi / 90 # +/- 2 degree allowed
 dist_precision_ = 0.3
-
-
-
 
 # publishers
 pub = None
 pub_next_position = None
-
-#PID control paramters (integral term is not added yet)
-P = -2	    # Proportional
-D = -30	    # Derivative
-deltaT = 10 # Time interval for derivative calculation
-prev_err_yaw = 0 #previous error for derivative term in control algorithm
- 
 
 # service callbacks
 def go_to_point_switch(req):
@@ -92,9 +81,7 @@ def fix_yaw(des_pos):
 
     twist_msg = Twist()
     if math.fabs(err_yaw) > yaw_precision_:
-        derivative = (err_yaw - prev_err_yaw)*D/deltaT
-        twist_msg.angular.z = (err_yaw)*P + derivative
-
+        twist_msg.angular.z = -0.7 if err_yaw > 0 else 0.7
 
     pub.publish(twist_msg)
 
@@ -104,7 +91,7 @@ def fix_yaw(des_pos):
         change_state(1)
 
 def go_straight_ahead(des_pos):
-    global yaw_, pub, yaw_precision_, state_, prev_err_yaw
+    global yaw_, pub, yaw_precision_, state_
     desired_yaw = math.atan2(des_pos.y - position_.y, des_pos.x - position_.x)
     err_yaw = desired_yaw - yaw_
     err_pos = math.sqrt(pow(des_pos.y - position_.y, 2) + pow(des_pos.x - position_.x, 2))
@@ -112,10 +99,7 @@ def go_straight_ahead(des_pos):
     if err_pos > dist_precision_:
         twist_msg = Twist()
         twist_msg.linear.x = 0.6
-       
-        derivative = (err_yaw - prev_err_yaw)*D/deltaT
-        twist_msg.angular.z = (err_yaw)*P + derivative
-        prev_err_yaw = err_yaw
+        twist_msg.angular.z = -0.2 if err_yaw > 0 else 0.2
         pub.publish(twist_msg)
     else:
         print 'Position error: [%s]' % err_pos
@@ -124,7 +108,7 @@ def go_straight_ahead(des_pos):
     # state change conditions
     if math.fabs(err_yaw) > yaw_precision_:
         print 'Yaw error: [%s]' % err_yaw
-  #     change_state(0)   Removed temporarily because it was causing problems (the rover stops abruptly in the middle in presence of an obstacle)
+        change_state(0)
 
 def done():
     twist_msg = Twist()
