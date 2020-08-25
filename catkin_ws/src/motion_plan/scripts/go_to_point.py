@@ -10,8 +10,6 @@ from tf import transformations
 from std_srvs.srv import *
 
 import math
-import numpy as np
-import csv
 
 active_ = False
 
@@ -26,7 +24,6 @@ desired_position_ = Point()
 desired_position_.x = 10
 desired_position_.y = 10
 desired_position_.z = 0
-current_goal = 1
 # parameters
 yaw_precision_ = math.pi*2 / 180 # +/- 10 degree allowed
 dist_precision_ = 0.3
@@ -36,7 +33,6 @@ dist_precision_ = 0.3
 
 # publishers
 pub = None
-pub_next_position = None
 
 #PID control paramters (integral term is not added yet)
 P = -2	    # Proportional
@@ -133,19 +129,11 @@ def done():
     pub.publish(twist_msg)
 
 def main():
-    global pub ,pub_next_position, active_, desired_position_, current_goal
-
-
-    #read position_data rom file
-    position_data = np.genfromtxt("positionData.csv", delimiter=',')
-    desired_position_.x = position_data[1][0]
-    desired_position_.y = position_data[1][1]
-    desired_position_.z = position_data[1][2]
+    global pub, active_
 
     rospy.init_node('go_to_point')
 
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-    pub_next_position = rospy.Publisher('/next_desired_position', Point, queue_size=2)
 
     sub_odom = rospy.Subscriber('/odom', Odometry, clbk_odom)
 
@@ -163,20 +151,7 @@ def main():
             elif state_ == 1:
                 go_straight_ahead(desired_position_)
             elif state_ == 2:
-                #Check if there are any more goals left
-                if current_goal < len(position_data) - 1:
-                    print 'Goal [%s] reached' % current_goal
-                    current_goal += 1
-                    desired_position_.x = position_data[current_goal][0]
-                    desired_position_.y = position_data[current_goal][1]
-                    desired_position_.z = position_data[current_goal][2]
-                    change_state(0)
-                    pub_next_position.publish(desired_position_)
-                elif current_goal == len(position_data) - 1:
-                    print 'Final Goal Reached'
-                    current_goal += 1  
-                else:
-                    done()
+                done()
             else:
                 rospy.logerr('Unknown state!')
 
